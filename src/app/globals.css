@@ -43,8 +43,8 @@ body {
 
 .layout-container {
   display: flex;
-  height: 100vh;
   width: 100%;
+  min-height: calc(100vh - 64px); /* account for navbar height */
 }
 
 /* Main Content Area */
@@ -65,18 +65,26 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--chat-bg);
-  height: 100vh;
-  position: relative;
+  height: 95vh;
+  position: sticky;
+  top: 0;
   transition: width 0.3s ease;
 }
 
 @media (max-width: 1024px) {
   .layout-container {
     flex-direction: column;
+    min-height: calc(100vh - 64px);
+  }
+  .main-content {
+    padding: 1.25rem;
   }
   .chat-sidebar {
     width: 100%;
-    height: 50vh;
+    min-height: 320px;
+    max-height: 55vh;
+    position: sticky;
+    bottom: 0;
     border-left: none;
     border-top: 1px solid var(--border);
   }
@@ -143,9 +151,15 @@ p { color: #cbd5e1; }
 /* Grid Layout for Food */
 .food-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 1.5rem;
   padding-bottom: 2rem;
+}
+
+@media (max-width: 640px) {
+  .food-grid {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
 }
 
 /* Food Card */

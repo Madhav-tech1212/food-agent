@@ -11,13 +11,13 @@ This is a Full-Stack Food Ordering Web Application featuring a traditional UI co
 
 ## Agent Architecture
 The Intelligent Agent uses the Groq model `llama-3.3-70b-versatile` via `@ai-sdk/groq` together with `@ai-sdk/react`. It is equipped with several tools:
-- `searchFood`: Takes a query parameter and searches the local `Foods.json` database. Outputs miniature food cards natively in the chat using Generative UI.
-- `addToCart`: Takes a food ID and quantity. The AI automatically determines this from intent. Once executed, the chat UI intercepts this tool call and executes a client-side side-effect to add the item to the global React Cart Context.
-- `removeFromCart`: Takes a food ID and removes that item from the cart based on user intent.
+- `search_food`: Takes a query parameter and searches the local `Foods.json` database. Outputs miniature food cards natively in the chat using Generative UI.
+- `add_to_cart`: Takes a food ID and quantity. The AI automatically determines this from intent. Once executed, the chat UI intercepts this tool call and executes a client-side side-effect to add the item to the global React Cart Context.
+- `remove_from_cart`: Takes a food ID and removes that item from the cart based on user intent.
 - `checkout`: Initiates the checkout sequence and surfaces a checkout confirmation card in the UI.
 
 ### Generative UI Approach
-Using AI SDK v5 UI messages, the Next.js frontend listens for typed tool parts (such as `tool-searchFood`, `tool-addToCart`, `tool-removeFromCart`, `tool-checkout`). When the AI decides to call a tool, the React frontend intercepts the result payload and renders custom React components (like `MiniFoodCard` and side-effect components) directly into the message history, instead of parsing raw markdown.
+Using AI SDK v5 UI messages, the Next.js frontend listens for typed tool parts (such as `tool-search_food`, `tool-add_to_cart`, `tool-remove_from_cart`, `tool-checkout`). When the AI decides to call a tool, the React frontend intercepts the result payload and renders custom React components (like `MiniFoodCard` and side-effect components) directly into the message history, instead of parsing raw markdown.
 
 ## Product Thinking (Summary)
 

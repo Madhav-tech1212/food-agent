@@ -1,7 +1,7 @@
-import { getMenu } from '@/lib/db';
-import CartSidebar from '@/components/CartSidebar';
-import ChatInterface from '@/components/ChatInterface';
-import MenuSection from '@/components/MenuSection';
+import { getMenu } from "@/lib/db";
+import CartSidebar from "@/components/CartSidebar";
+import ChatInterface from "@/components/ChatInterface";
+import MenuSection from "@/components/MenuSection";
 
 export default function OrderPage() {
   const menuConfig = getMenu();
@@ -13,7 +13,9 @@ export default function OrderPage() {
         <header className="header">
           <div>
             <h1>FoodAI</h1>
-            <p>Browse the menu or ask our AI to find the perfect meal for you.</p>
+            <p>
+              Browse the menu or ask our AI to find the perfect meal for you.
+            </p>
           </div>
         </header>
 
@@ -21,7 +23,14 @@ export default function OrderPage() {
       </div>
 
       {/* Right side: AI Agent Chat */}
-      <aside className="chat-sidebar">
+      <aside
+        className="chat-sidebar"
+        style={{
+          position: "sticky",
+          top: "3.5rem",
+          height: "95vh"
+        }}
+      >
         <ChatInterface />
       </aside>
 

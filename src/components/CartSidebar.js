@@ -23,7 +23,7 @@ export default function CartSidebar() {
         <>
             <button
                 className="btn btn-secondary"
-                style={{ position: 'fixed', top: '1.5rem', right: '1.5rem', zIndex: 40, borderRadius: '50%', width: '3rem', height: '3rem', padding: 0 }}
+                style={{ position: 'fixed', top: '5.5rem', right: '1.5rem', zIndex: 40, borderRadius: '50%', width: '3rem', height: '3rem', padding: 0 }}
                 onClick={() => setIsOpen(true)}
             >
                 <ShoppingBag size={20} />

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import FoodCard from './FoodCard';
 
@@ -14,6 +14,36 @@ export default function MenuSection({ initialMenu }) {
     Hot: false,
   });
   const [selectedFood, setSelectedFood] = useState(null);
+
+  // Auto-sync filters when user types keywords in search (veg, non-veg, mild, medium, hot)
+  useEffect(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return;
+
+    // Type: veg / vegetarian
+    if (/\b(veg|vegetarian)\b/.test(q) && !/\bnon[- ]?veg|non[- ]?vegetarian\b/.test(q)) {
+      setVegOnly(true);
+      setNonVegOnly(false);
+    }
+    // Type: non-veg / non-vegetarian
+    if (/\bnon[- ]?veg|non[- ]?vegetarian\b/.test(q)) {
+      setNonVegOnly(true);
+      setVegOnly(false);
+    }
+
+    // Spice: mild
+    if (/\bmild\b/.test(q)) {
+      setSpiceFilters((prev) => ({ ...prev, Mild: true }));
+    }
+    // Spice: medium
+    if (/\bmedium\b/.test(q)) {
+      setSpiceFilters((prev) => ({ ...prev, Medium: true }));
+    }
+    // Spice: hot / spicy
+    if (/\b(hot|spicy)\b/.test(q)) {
+      setSpiceFilters((prev) => ({ ...prev, Hot: true }));
+    }
+  }, [query]);
 
   const filteredMenu = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -169,17 +199,18 @@ export default function MenuSection({ initialMenu }) {
         )}
       </div>
 
-      {/* Food details modal */}
+      {/* Food details modal – full dish data */}
       {selectedFood && (
         <div
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15,23,42,0.75)',
+            background: 'rgba(15,23,42,0.85)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 60,
+            padding: '1rem',
           }}
           onClick={closeModal}
         >
@@ -187,8 +218,8 @@ export default function MenuSection({ initialMenu }) {
             className="glass-panel"
             style={{
               maxWidth: '640px',
-              width: '90%',
-              maxHeight: '80vh',
+              width: '100%',
+              maxHeight: '90vh',
               overflowY: 'auto',
               padding: '1.5rem',
               position: 'relative',
@@ -211,6 +242,8 @@ export default function MenuSection({ initialMenu }) {
               <X size={20} />
             </button>
 
+            <h3 style={{ marginBottom: '1rem', fontSize: '0.9rem', opacity: 0.8 }}>Full dish details</h3>
+
             <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
               <img
                 src={`/${selectedFood.image}`}
@@ -224,7 +257,10 @@ export default function MenuSection({ initialMenu }) {
               />
               <div style={{ flex: 1, minWidth: '220px' }}>
                 <h2 style={{ marginBottom: '0.25rem' }}>{selectedFood.name}</h2>
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', fontSize: '0.85rem' }}>
+                {selectedFood.id != null && (
+                  <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.5rem' }}>ID: {selectedFood.id}</p>
+                )}
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', fontSize: '0.85rem', flexWrap: 'wrap' }}>
                   <span
                     className="badge"
                     style={{
@@ -243,46 +279,56 @@ export default function MenuSection({ initialMenu }) {
                     <span className="badge">{selectedFood.category}</span>
                   )}
                 </div>
-                <p style={{ fontSize: '0.9rem', color: '#cbd5e1', marginBottom: '0.75rem' }}>
-                  {selectedFood.description}
-                </p>
-
-                {selectedFood.ingredients && selectedFood.ingredients.length > 0 && (
-                  <div style={{ marginBottom: '0.75rem' }}>
-                    <h4 style={{ fontSize: '0.9rem', marginBottom: '0.25rem' }}>Ingredients</h4>
-                    <p style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>
-                      {selectedFood.ingredients.join(', ')}
-                    </p>
-                  </div>
-                )}
-
-                {selectedFood.nutrition && (
-                  <div style={{ marginBottom: '0.75rem' }}>
-                    <h4 style={{ fontSize: '0.9rem', marginBottom: '0.25rem' }}>Nutrition (per serving)</h4>
-                    <p style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>
-                      {selectedFood.nutrition.calories != null && `Calories: ${selectedFood.nutrition.calories} `}
-                      {selectedFood.nutrition.protein && ` • Protein: ${selectedFood.nutrition.protein} `}
-                      {selectedFood.nutrition.carbs && ` • Carbs: ${selectedFood.nutrition.carbs} `}
-                      {selectedFood.nutrition.fat && ` • Fat: ${selectedFood.nutrition.fat}`}
-                    </p>
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem' }}>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#60a5fa' }}>
-                    ₹{selectedFood.price}{' '}
-                    {selectedFood.serves && (
-                      <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                        • Serves {selectedFood.serves}
-                      </span>
-                    )}
-                  </div>
-                  <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
-                    Click the + button on the card to add this dish to your cart.
-                  </span>
+                <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#60a5fa', marginBottom: '0.75rem' }}>
+                  ₹{selectedFood.price}
+                  {selectedFood.serves != null && (
+                    <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontWeight: 400 }}> · Serves {selectedFood.serves}</span>
+                  )}
                 </div>
               </div>
             </div>
+
+            {selectedFood.description && (
+              <div style={{ marginTop: '1rem' }}>
+                <h4 style={{ fontSize: '0.9rem', marginBottom: '0.35rem', opacity: 0.9 }}>Description</h4>
+                <p style={{ fontSize: '0.9rem', color: '#cbd5e1', lineHeight: 1.6 }}>
+                  {selectedFood.description}
+                </p>
+              </div>
+            )}
+
+            {selectedFood.ingredients && selectedFood.ingredients.length > 0 && (
+              <div style={{ marginTop: '1rem' }}>
+                <h4 style={{ fontSize: '0.9rem', marginBottom: '0.35rem', opacity: 0.9 }}>Ingredients</h4>
+                <p style={{ fontSize: '0.85rem', color: '#cbd5e1' }}>
+                  {selectedFood.ingredients.join(', ')}
+                </p>
+              </div>
+            )}
+
+            {selectedFood.nutrition && (
+              <div style={{ marginTop: '1rem' }}>
+                <h4 style={{ fontSize: '0.9rem', marginBottom: '0.35rem', opacity: 0.9 }}>Nutrition (per serving)</h4>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', fontSize: '0.85rem', color: '#cbd5e1' }}>
+                  {selectedFood.nutrition.calories != null && (
+                    <span>Calories: <strong>{selectedFood.nutrition.calories}</strong></span>
+                  )}
+                  {selectedFood.nutrition.protein && (
+                    <span>Protein: <strong>{selectedFood.nutrition.protein}</strong></span>
+                  )}
+                  {selectedFood.nutrition.carbs && (
+                    <span>Carbs: <strong>{selectedFood.nutrition.carbs}</strong></span>
+                  )}
+                  {selectedFood.nutrition.fat && (
+                    <span>Fat: <strong>{selectedFood.nutrition.fat}</strong></span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '1rem' }}>
+              Click the + button on the card to add this dish to your cart.
+            </p>
           </div>
         </div>
       )}

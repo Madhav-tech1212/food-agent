@@ -5,15 +5,46 @@ import { useCart } from '@/context/CartContext';
 import { Send, Bot, User, CheckCircle, Search, ShoppingBag } from 'lucide-react';
 import FoodCard from './FoodCard';
 
+const THINKING_PHRASES = [
+    'Thinking...',
+    'Processing...',
+    'Searching menu...',
+    'Finding options...',
+    'Almost there...',
+];
+
+function ThinkingIndicator() {
+    const [index, setIndex] = useState(0);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setIndex((i) => (i + 1) % THINKING_PHRASES.length);
+        }, 1500);
+        return () => clearInterval(interval);
+    }, []);
+
+    return (
+        <div className="agent-message thinking-bubble" style={{ padding: '0.75rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.75rem', minWidth: '200px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: 0.9 }}>
+                <Bot size={18} color="#3b82f6" />
+                <span className="thinking-text">{THINKING_PHRASES[index]}</span>
+            </div>
+            <span className="thinking-dots">
+                <span>.</span><span>.</span><span>.</span>
+            </span>
+        </div>
+    );
+}
+
 export default function ChatInterface() {
     const { cart, addToCart } = useCart();
-    const messagesEndRef = useRef(null);
+    const messagesScrollRef = useRef(null);
     const [input, setInput] = useState('');
 
     // Single-provider chat: use default /api/chat endpoint
     const { messages, isLoading, error, sendMessage, clearError, setMessages } = useChat();
 
-    // Keep scroll at bottom + log last message
+    // Keep scroll at bottom (only within chat container, never scroll the page)
     useEffect(() => {
         if (!messages || messages.length === 0) return;
 
@@ -29,7 +60,10 @@ export default function ChatInterface() {
             raw: last,
         });
 
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        // Scroll only the chat container, not the page
+        if (messagesScrollRef.current) {
+            messagesScrollRef.current.scrollTop = messagesScrollRef.current.scrollHeight;
+        }
     }, [messages]);
 
     // If the server reports an error, turn it into a normal assistant message
@@ -73,7 +107,7 @@ export default function ChatInterface() {
                 <p style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}>Ask me to find food or manage your order</p>
             </div>
 
-            <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem', scrollbarWidth: 'thin' }}>
+            <div ref={messagesScrollRef} style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem', scrollbarWidth: 'thin' }}>
                 {(!messages || messages.length === 0) && (
                     <div style={{ textAlign: 'center', marginTop: '4rem', opacity: 0.5 }}>
                         <Bot size={48} style={{ margin: '0 auto 1rem' }} />
@@ -103,8 +137,8 @@ export default function ChatInterface() {
 
                         {/* Generative UI based on tool parts */}
                         {m.parts?.map((part, idx) => {
-                            // searchFood results
-                            if (part.type === 'tool-searchFood') {
+                            // search_food results
+                            if (part.type === 'tool-search_food') {
                                 const hasResults = part.state === 'output-available' && part.output;
                                 const results = hasResults ? part.output.results || [] : [];
 
@@ -134,8 +168,8 @@ export default function ChatInterface() {
                                 );
                             }
 
-                            // addToCart confirmation
-                            if (part.type === 'tool-addToCart') {
+                            // add_to_cart confirmation
+                            if (part.type === 'tool-add_to_cart') {
                                 const hasOutput = part.state === 'output-available' && part.output;
                                 return (
                                     <div key={part.toolCallId} className="agent-message" style={{ background: 'rgba(34, 197, 94, 0.1)', borderColor: 'rgba(34, 197, 94, 0.2)' }}>
@@ -150,8 +184,8 @@ export default function ChatInterface() {
                                 );
                             }
 
-                            // removeFromCart confirmation
-                            if (part.type === 'tool-removeFromCart') {
+                            // remove_from_cart confirmation
+                            if (part.type === 'tool-remove_from_cart') {
                                 const hasOutput = part.state === 'output-available' && part.output;
                                 return (
                                     <div key={part.toolCallId} className="agent-message" style={{ background: 'rgba(239, 68, 68, 0.1)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
@@ -203,11 +237,8 @@ export default function ChatInterface() {
                 ))}
 
                 {isLoading && messages && messages[messages.length - 1]?.role === 'user' && (
-                    <div className="agent-message" style={{ opacity: 0.7, padding: '0.75rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span className="spinner"></span> Working...
-                    </div>
+                    <ThinkingIndicator />
                 )}
-                <div ref={messagesEndRef} />
             </div>
 
             <form onSubmit={handleSubmit} style={{ marginTop: '1rem', position: 'relative' }}>
@@ -245,6 +276,15 @@ export default function ChatInterface() {
           animation: spin 1s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
+        .thinking-bubble .thinking-dots span {
+          animation: blink 0.6s ease-in-out infinite;
+        }
+        .thinking-bubble .thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .thinking-bubble .thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes blink {
+          0%, 60% { opacity: 0.2; }
+          100% { opacity: 1; }
+        }
       `}} />
         </div>
     );
@@ -256,8 +296,30 @@ function MiniFoodCard({ food }) {
     const { addToCart } = useCart();
 
     if (!food) return null;
+
+    const typeValue = String(food.type || '').toLowerCase();
+    const isNonVeg = typeValue.includes('non');
+    const cardTintStyle = isNonVeg
+        ? {
+            background: 'rgba(239, 68, 68, 0.12)',
+            border: '1px solid rgba(239, 68, 68, 0.25)',
+        }
+        : {
+            background: 'rgba(34, 197, 94, 0.12)',
+            border: '1px solid rgba(34, 197, 94, 0.25)',
+        };
+
     return (
-        <div className="glass-panel" style={{ display: 'flex', padding: '0.75rem', gap: '1rem', alignItems: 'center' }}>
+        <div
+            className="glass-panel"
+            style={{
+                display: 'flex',
+                padding: '0.75rem',
+                gap: '1rem',
+                alignItems: 'center',
+                ...cardTintStyle,
+            }}
+        >
             <img src={`/${food.image}`} alt={food.name} style={{ width: '60px', height: '60px', borderRadius: '8px', objectFit: 'cover' }} />
             <div style={{ flex: 1 }}>
                 <h4 style={{ fontWeight: 600, fontSize: '0.875rem' }}>{food.name}</h4>
