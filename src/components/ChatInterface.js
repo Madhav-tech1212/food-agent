@@ -2,7 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
 import { useCart } from '@/context/CartContext';
-import { Send, Bot, User, CheckCircle, Search, ShoppingBag } from 'lucide-react';
+import { Send, Bot, User, CheckCircle, Search, ShoppingBag, CreditCard } from 'lucide-react';
 import FoodCard from './FoodCard';
 
 const THINKING_PHRASES = [
@@ -37,12 +37,14 @@ function ThinkingIndicator() {
 }
 
 export default function ChatInterface() {
-    const { cart, addToCart } = useCart();
+    const { cart, addToCart, cartTotal } = useCart();
     const messagesScrollRef = useRef(null);
     const [input, setInput] = useState('');
 
-    // Single-provider chat: use default /api/chat endpoint
-    const { messages, isLoading, error, sendMessage, clearError, setMessages } = useChat();
+    // Pass cart so the AI can show it and complete checkout when user asks
+    const { messages, isLoading, error, sendMessage, clearError, setMessages } = useChat({
+        body: { cart, cartTotal },
+    });
 
     // Keep scroll at bottom (only within chat container, never scroll the page)
     useEffect(() => {
@@ -184,6 +186,22 @@ export default function ChatInterface() {
                                 );
                             }
 
+                            // add_items_to_cart confirmation (multiple items by name)
+                            if (part.type === 'tool-add_items_to_cart') {
+                                const hasOutput = part.state === 'output-available' && part.output;
+                                return (
+                                    <div key={part.toolCallId} className="agent-message" style={{ background: 'rgba(34, 197, 94, 0.1)', borderColor: 'rgba(34, 197, 94, 0.2)' }}>
+                                        {hasOutput ? (
+                                            <AddMultipleToCartEffect result={part.output} />
+                                        ) : (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: 0.7 }}>
+                                                <span className="spinner"></span> Adding items to cart...
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            }
+
                             // remove_from_cart confirmation
                             if (part.type === 'tool-remove_from_cart') {
                                 const hasOutput = part.state === 'output-available' && part.output;
@@ -200,24 +218,21 @@ export default function ChatInterface() {
                                 );
                             }
 
-                            // checkout prompt
+                            // checkout prompt – payment method selection
                             if (part.type === 'tool-checkout') {
                                 const hasOutput = part.state === 'output-available' && part.output;
                                 const isError = part.state === 'output-error';
+                                const paymentMethods = hasOutput?.paymentMethods || [
+                                    { id: 'cod', name: 'Cash on Delivery (COD)', available: true },
+                                    { id: 'upi', name: 'UPI', available: false },
+                                    { id: 'card', name: 'Credit / Debit Card', available: false },
+                                    { id: 'netbank', name: 'Net Banking', available: false },
+                                ];
 
                                 return (
                                     <div key={part.toolCallId} className="agent-message" style={{ background: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.2)' }}>
                                         {hasOutput && !isError ? (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
-                                                    <CheckCircle size={18} color="#22c55e" />
-                                                    <span style={{ color: '#22c55e' }}>Ready for Cash on Delivery</span>
-                                                </div>
-                                                <p style={{ fontSize: '0.875rem' }}>I've prepared your order. Click below or open the cart sidebar to confirm your order.</p>
-                                                <button className="btn btn-primary" style={{ alignSelf: 'flex-start', marginTop: '0.5rem' }} onClick={() => document.querySelector('.btn-secondary[style*="fixed"]')?.click()}>
-                                                    View Cart & Checkout
-                                                </button>
-                                            </div>
+                                            <CheckoutPaymentCard paymentMethods={paymentMethods} />
                                         ) : isError ? (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', color: '#f87171' }}>
                                                 <span>Unable to prepare checkout. Please try again.</span>
@@ -290,7 +305,51 @@ export default function ChatInterface() {
     );
 }
 
-// Sub-components for Generative UI 
+// Sub-components for Generative UI
+
+function CheckoutPaymentCard({ paymentMethods }) {
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <h4 style={{ fontSize: '0.95rem', margin: 0 }}>Choose Payment Method</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {paymentMethods.map((pm) => (
+                    <div
+                        key={pm.id}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '0.6rem 0.9rem',
+                            background: pm.available ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255,255,255,0.05)',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            opacity: pm.available ? 1 : 0.6,
+                        }}
+                    >
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+                            <CreditCard size={16} />
+                            {pm.name}
+                        </span>
+                        {pm.available ? (
+                            <button
+                                className="btn btn-primary"
+                                style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
+                                onClick={() => document.querySelector('.btn-secondary[style*="fixed"]')?.click()}
+                            >
+                                Choose COD
+                            </button>
+                        ) : (
+                            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Currently unavailable</span>
+                        )}
+                    </div>
+                ))}
+            </div>
+            <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0 }}>
+                COD (Cash on Delivery) is the only payment option available at the moment.
+            </p>
+        </div>
+    );
+}
 
 function MiniFoodCard({ food }) {
     const { addToCart } = useCart();
@@ -332,6 +391,37 @@ function MiniFoodCard({ food }) {
     );
 }
 
+// Side-effect for add_multiple_to_cart – adds each item to cart
+function AddMultipleToCartEffect({ result }) {
+    const { addToCart } = useCart();
+    const mounted = useRef(false);
+
+    useEffect(() => {
+        if (!mounted.current && result?.items?.length) {
+            setTimeout(() => {
+                result.items.forEach(({ food, quantity }) => {
+                    if (food) addToCart(food, quantity ?? 1);
+                });
+                mounted.current = true;
+            }, 0);
+        }
+    }, [result, addToCart]);
+
+    if (!result?.items?.length) return null;
+
+    const summary = result.items
+        .filter((r) => r.food)
+        .map(({ food, quantity }) => `${quantity ?? 1}x ${food.name}`)
+        .join(', ');
+
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#22c55e' }}>
+            <CheckCircle size={18} />
+            <span>Added <b>{summary}</b> to cart</span>
+        </div>
+    );
+}
+
 // Side-effect component that triggers the addToCart context action once
 function AddToCartEffect({ result }) {
     const { addToCart } = useCart();
@@ -358,24 +448,39 @@ function AddToCartEffect({ result }) {
 }
 
 function RemoveFromCartEffect({ result }) {
-    const { removeFromCart } = useCart();
+    const { cart, removeFromCart, updateQuantity } = useCart();
     const mounted = useRef(false);
 
     useEffect(() => {
         if (!mounted.current && result && result.food) {
             setTimeout(() => {
-                removeFromCart(result.food.id);
+                const id = result.food.id;
+                const qty = result.quantityRemoved != null ? Number(result.quantityRemoved) : null;
+                if (qty != null && qty > 0) {
+                    const item = cart.find((i) => i.id === id);
+                    const current = item ? item.quantity : 0;
+                    const newQty = current - qty;
+                    if (newQty <= 0) removeFromCart(id);
+                    else updateQuantity(id, newQty);
+                } else {
+                    removeFromCart(id);
+                }
             }, 0);
             mounted.current = true;
         }
-    }, [result, removeFromCart]);
+    }, [result, removeFromCart, updateQuantity, cart]);
 
     if (!result || !result.food) return null;
+
+    const qty = result.quantityRemoved != null ? Number(result.quantityRemoved) : null;
+    const label = qty != null && qty > 0
+        ? `Removed ${qty}x ${result.food.name}`
+        : `Removed ${result.food.name} from cart`;
 
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#f97373' }}>
             <CheckCircle size={18} />
-            <span>Removed <b>{result.food.name}</b> from cart</span>
+            <span>{label}</span>
         </div>
     );
 }

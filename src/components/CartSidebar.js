@@ -93,7 +93,7 @@ export default function CartSidebar() {
                     >
                         {checkoutStatus === 'processing' ? 'Placing Order...' :
                             checkoutStatus === 'success' ? (
-                                <><CheckCircle size={20} /> Order Placed!</>
+                                <span style={{ color: '#22c55e', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CheckCircle size={20} /> Order Placed!</span>
                             ) : 'Checkout (Cash on Delivery)'}
                     </button>
                 </div>
